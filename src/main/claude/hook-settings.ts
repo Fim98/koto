@@ -18,8 +18,8 @@ import { wrapWindowsDirectCmdHookCommand } from '../agent-hooks/windows-direct-c
 import { isGitBashAvailable } from '../git-bash'
 
 export type ClaudeCompatibleHookSettings = {
-  configDirName: '.claude' | '.openclaude'
-  scriptBaseName: 'claude-hook' | 'openclaude-hook'
+  configDirName: '.claude' | '.openclaude' | '.codebuddy'
+  scriptBaseName: 'claude-hook' | 'openclaude-hook' | 'codebuddy-hook'
   usesWindowsCompatLauncher: boolean
 }
 
@@ -32,6 +32,12 @@ export const CLAUDE_HOOK_SETTINGS: ClaudeCompatibleHookSettings = {
 export const OPENCLAUDE_HOOK_SETTINGS: ClaudeCompatibleHookSettings = {
   configDirName: '.openclaude',
   scriptBaseName: 'openclaude-hook',
+  usesWindowsCompatLauncher: false
+}
+
+export const CODEBUDDY_HOOK_SETTINGS: ClaudeCompatibleHookSettings = {
+  configDirName: '.codebuddy',
+  scriptBaseName: 'codebuddy-hook',
   usesWindowsCompatLauncher: false
 }
 

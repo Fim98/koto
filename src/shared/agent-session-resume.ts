@@ -16,7 +16,8 @@ export const RESUMABLE_TUI_AGENTS = [
   'omp',
   'prime-agent',
   'copilot',
-  'kimi'
+  'kimi',
+  'codebuddy'
 ] as const satisfies readonly TuiAgent[]
 
 export type ResumableTuiAgent = (typeof RESUMABLE_TUI_AGENTS)[number]
@@ -288,5 +289,8 @@ export function getAgentResumeArgv(
     // Why: Kimi resumes by id with --session; sessions are work-dir-scoped (enforced by callers).
     case 'kimi':
       return providerSession.key === 'session_id' ? ['kimi', '--session', id] : null
+    // Why: CodeBuddy is a Claude fork — same `-r/--resume <sessionId>` contract.
+    case 'codebuddy':
+      return providerSession.key === 'session_id' ? ['codebuddy', '--resume', id] : null
   }
 }

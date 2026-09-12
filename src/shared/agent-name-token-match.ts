@@ -24,6 +24,7 @@ export const AGENT_NAMES = [
   'opencode',
   'mimo',
   'openclaw',
+  'codebuddy',
   'aider',
   'grok',
   'devin'

@@ -69,6 +69,7 @@ const NAME_TOKENS: readonly (readonly [string, TuiAgent])[] = [
   ['opencode', 'opencode'],
   ['mimo', 'mimo-code'],
   ['openclaw', 'openclaw'],
+  ['codebuddy', 'codebuddy'],
   ['aider', 'aider'],
   ['grok', 'grok'],
   ['devin', 'devin']

@@ -11,6 +11,7 @@ const HEADLESS_ONE_SHOT_MATCHERS: Partial<
 > = {
   claude: isPrintModeHeadlessOneShotCommand,
   trae: isPrintModeHeadlessOneShotCommand,
+  codebuddy: isPrintModeHeadlessOneShotCommand,
   'prime-agent': isPrimeAgentHeadlessOneShotCommand,
   ante: isAnteHeadlessOneShotCommand
 }

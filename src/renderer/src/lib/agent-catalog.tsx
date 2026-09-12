@@ -306,6 +306,12 @@ export const getAgentCatalog = createLocalizedCatalog((): AgentCatalogEntry[] =>
     cmd: 'openclaw',
     faviconDomain: 'openclaw.ai',
     homepageUrl: 'https://github.com/openclaw/openclaw'
+  },
+  {
+    id: 'codebuddy',
+    label: translate('auto.lib.agent.catalog.6cb37d1a4e', 'CodeBuddy'),
+    cmd: 'codebuddy',
+    homepageUrl: 'https://www.codebuddy.ai'
   }
 ])
 
