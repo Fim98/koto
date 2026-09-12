@@ -1,0 +1,42 @@
+name: Sync From Upstream
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"    # 每周一 02:00 UTC 自动同步
+  workflow_dispatch: {}    # 也支持手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/stablyai/orca.git || true
+          git fetch upstream main
+
+      - name: Merge upstream (fail loudly on conflict)
+        run: |
+          # 第一次同步时的历史与上游无共同祖先，需要 --allow-unrelated-histories；
+          # 之后有共同祖先了，该参数自动被忽略，不影响正常合并。
+          git merge upstream/main --no-edit --allow-unrelated-histories
+          if git ls-files -u | grep -q .; then
+            echo "::error::与上游合并出现冲突，请手动处理: git fetch upstream && git merge --allow-unrelated-histories upstream/main"
+            exit 1
+          fi
+
+      - name: Push
+        run: git push origin main
