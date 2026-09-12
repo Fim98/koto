@@ -92,7 +92,7 @@ jobs:
           name: orca-macos
           path: |
             dist/orca-macos-*.dmg
-            dist/orca-macos-*.zip
+            dist/*-mac.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -191,3 +191,49 @@ jobs:
             dist/orca-ide-*.rpm
           if-no-files-found: error
           retention-days: 30
+
+  # Why a separate job: one release per run, published after every requested
+  # platform has finished, so the Assets list is complete the moment the
+  # release is visible. Tag embeds the run number so re-dispatching never
+  # collides with (or clobbers) an existing release.
+  publish-release:
+    needs: [build-macos, build-windows, build-linux]
+    if: >-
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "tag=v${VERSION}-build.${{ github.run_number }}" >>"$GITHUB_OUTPUT"
+
+      - name: Create GitHub release with installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          ls -la dist/
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Orca desktop build $TAG (${{ inputs.platform }})" \
+            --notes "Unsigned desktop build of \`$GITHUB_SHA\` ([commit]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA)).
+
+          Installers are not code-signed:
+          - **macOS**: after mounting the DMG and copying to /Applications, run \`xattr -cr /Applications/Orca.app\` (or right-click → Open on first launch).
+          - **Windows**: SmartScreen → More info → Run anyway.
+
+          This build may offer in-app updates from the upstream stablyai/orca releases; accepting one replaces this fork build."
