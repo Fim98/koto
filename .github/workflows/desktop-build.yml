@@ -1,0 +1,176 @@
+name: Desktop Build (unsigned, personal)
+
+# Why: this fork drops upstream's signed release channels, so this is the
+# simplest way to cut installable desktop builds of any branch for personal use.
+# No signing, no notarization, no publishing — artifacts land on the run page
+# for manual download.
+#
+# Unsigned builds need a one-time Gatekeeper/SmartScreen override after install:
+#   macOS:   xattr -cr /Applications/Orca.app   (or right-click → Open)
+#   Windows: SmartScreen "More info" → "Run anyway"
+#
+# From the Actions tab: pick this workflow, "Run workflow", choose the branch
+# and platform. Or from the CLI:
+#
+#   gh workflow run desktop-build.yml --ref main -f platform=macos
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Which installer to build'
+        required: true
+        default: macos
+        type: choice
+        options:
+          - macos
+          - windows
+          - linux
+          - all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-build-${{ inputs.platform }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  build-macos:
+    if: inputs.platform == 'macos' || inputs.platform == 'all'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Cache electron-builder downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-builder-mac-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-builder-mac-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The repo's own unsigned local pipeline: desktop bundle, the three macOS
+      # native helpers, the Electron runtime, then electron-builder --mac with a
+      # `x.y.z-local.<timestamp>.<sha>` version and no publish target.
+      - name: Build macOS dmg + zip
+        run: pnpm run build:mac
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-macos
+          path: |
+            dist/orca-macos-*.dmg
+            dist/orca-macos-*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  build-windows:
+    if: inputs.platform == 'windows' || inputs.platform == 'all'
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Cache electron-builder downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
+          key: electron-builder-win-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-builder-win-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Unsigned NSIS installer; the config's SignPath uninstaller hook falls
+      # back to embedding the unsigned uninstaller when its env is absent.
+      - name: Build Windows installer
+        run: pnpm run build:win
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-windows
+          path: dist/orca-windows-setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  build-linux:
+    if: inputs.platform == 'linux' || inputs.platform == 'all'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Cache electron-builder downloads
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+          key: electron-builder-linux-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-builder-linux-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Linux AppImage + deb + rpm
+        run: pnpm run build:linux
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: orca-linux
+          path: |
+            dist/orca-linux*.AppImage
+            dist/orca-ide_*.deb
+            dist/orca-ide-*.rpm
+          if-no-files-found: error
+          retention-days: 30
