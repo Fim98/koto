@@ -70,11 +70,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The repo's own unsigned local pipeline: desktop bundle, the three macOS
-      # native helpers, the Electron runtime, then electron-builder --mac with a
-      # `x.y.z-local.<timestamp>.<sha>` version and no publish target.
+      # The repo's own unsigned pipeline, minus build:mac's electron-builder
+      # wrapper: on CI that wrapper inherits the config's GitHub publish target
+      # and dies for want of a token, so stamp the local version here and call
+      # electron-builder with --publish never directly.
       - name: Build macOS dmg + zip
-        run: pnpm run build:mac
+        run: |
+          pnpm run build:desktop
+          pnpm run build:computer-macos
+          pnpm run build:keyboard-layout-macos
+          pnpm run build:notification-status-macos
+          pnpm run ensure:electron-runtime
+          COMMIT="$(git rev-parse --short=12 HEAD)"
+          VERSION="$(node -p "require('./package.json').version")-local.$(date +%s).$COMMIT"
+          ORCA_BUILD_COMMIT="$COMMIT" ORCA_LOCAL_BUILD_VERSION="$VERSION" \
+            pnpm exec electron-builder --config config/electron-builder.config.cjs --mac --publish never
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -119,8 +129,12 @@ jobs:
 
       # Unsigned NSIS installer; the config's SignPath uninstaller hook falls
       # back to embedding the unsigned uninstaller when its env is absent.
+      # --publish never: the config's publish target is upstream's repo.
       - name: Build Windows installer
-        run: pnpm run build:win
+        run: |
+          pnpm run build:desktop
+          pnpm run ensure:electron-runtime
+          pnpm exec electron-builder --config config/electron-builder.config.cjs --win --publish never
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -162,7 +176,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Linux AppImage + deb + rpm
-        run: pnpm run build:linux
+        run: |
+          pnpm run build:desktop
+          pnpm run ensure:electron-runtime
+          pnpm exec electron-builder --config config/electron-builder.config.cjs --linux --publish never
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
